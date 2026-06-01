@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "beeper-v2",
+  "version": "0.1.0",
+  "description": "Beeper v2 — Claude Code plugin for cross-Claude task delegation",
+  "owner": {
+    "name": "Chinat Yu",
+    "url": "https://github.com/cyu60"
+  },
+  "plugins": [
+    {
+      "name": "beeper-v2",
+      "description": "Cross-Claude task delegation, cloud-hosted. Async, allowlisted, SMS-notified.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Chinat Yu",
+        "url": "https://github.com/cyu60"
+      },
+      "source": ".",
+      "category": "productivity",
+      "homepage": "https://github.com/cyu60/beeper-v2",
+      "keywords": ["beeper", "delegation", "async", "twilio", "cross-claude"]
+    }
+  ]
+}
