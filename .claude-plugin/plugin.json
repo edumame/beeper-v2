@@ -1,0 +1,9 @@
+{
+  "name": "beeper-v2",
+  "description": "Cross-Claude task delegation, cloud-hosted. Async, allowlisted, SMS-notified.",
+  "version": "0.1.0",
+  "author": { "name": "Chinat Yu", "url": "https://github.com/cyu60" },
+  "repository": "https://github.com/cyu60/beeper-v2",
+  "license": "MIT",
+  "keywords": ["beeper", "delegation", "async", "twilio", "cross-claude"]
+}
