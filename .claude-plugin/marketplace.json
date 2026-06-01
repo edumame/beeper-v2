@@ -16,7 +16,7 @@
         "name": "Chinat Yu",
         "url": "https://github.com/cyu60"
       },
-      "source": ".",
+      "source": "./plugins/beeper-v2",
       "category": "productivity",
       "homepage": "https://github.com/cyu60/beeper-v2",
       "keywords": ["beeper", "delegation", "async", "twilio", "cross-claude"]
