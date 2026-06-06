@@ -7,7 +7,7 @@ Cross-Claude task delegation, cloud-hosted. Async, allowlist-gated, SMS-notified
 1. Ask admin (Chinat) to add you to the allowlist via the host's `/admin` page.
 2. In Claude Code, add the marketplace and install (one-time):
    ```
-   /plugin marketplace add cyu60/beeper-v2
+   /plugin marketplace add edumame/beeper-v2
    /plugin install beeper-v2
    ```
 3. Add to your `~/.zshenv`:
@@ -38,5 +38,5 @@ The plugin is a thin Claude Code skill that calls a private cloud service. The s
 
 ## Source
 
-- Plugin (this repo): https://github.com/cyu60/beeper-v2
-- Host: https://github.com/cyu60/beeper-v2-host (private)
+- Plugin (this repo): https://github.com/edumame/beeper-v2
+- Host: https://github.com/edumame/beeper-v2-host (private)
