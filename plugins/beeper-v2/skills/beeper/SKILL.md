@@ -25,6 +25,7 @@ export BEEPER_API_URL=https://beeper-v2-host.vercel.app
 - **Send** — the user says "ask Edward's Claude about X", "send this to Kaan", "beep <name>". → run the send block.
 - **Check** — user types `/beeper-v2` or asks "what beeps do I have?". → run the check block.
 - **Reply / decline** — user reviews a queued beep and chooses an action. → run the reply or decline block.
+- **Onboard** — user says "onboard <name>", "draft an onboarding message for <name>", or types `/beeper-v2 onboard <name>`. → run the onboard block. This is for people not yet on Beeper — it formats the canned welcome message and copies it to clipboard so the user can paste it into iMessage.
 
 ## Workflow
 
@@ -144,6 +145,30 @@ curl -fsS -X POST "$BEEPER_API_URL/api/beeps/$ID/decline" \
   -H 'content-type: application/json' \
   -d "$(jq -nc --arg by "$BEEPER_USER" --arg reason "$REASON" '{by:$by,reason:$reason}')"
 ```
+
+### Onboard
+
+Use this when the user wants to bring a NEW person onto Beeper — someone who isn't on the allowlist yet and doesn't have Beeper installed. The output goes via iMessage (clipboard paste), not the Beeper API.
+
+The canned template lives at `templates/onboarding.md` inside this plugin. Resolve its absolute path so you can read it from any cwd:
+
+```bash
+PLUGIN_DIR="$(find ~/.claude/plugins/cache/beeper-v2 -maxdepth 4 -type d -name beeper-v2 2>/dev/null | grep -E 'plugins/beeper-v2$' | head -1)"
+[ -z "$PLUGIN_DIR" ] && PLUGIN_DIR="$HOME/codeDev/beeper-v2/plugins/beeper-v2"
+TEMPLATE_PATH="$PLUGIN_DIR/templates/onboarding.md"
+
+# Substitute the recipient name and copy to clipboard
+NAME="jeffrey"     # from $ARGUMENTS
+sed "s/\[name\]/$NAME/g" "$TEMPLATE_PATH" | tee /tmp/beeper-onboard.txt | pbcopy
+echo "copied to clipboard. paste into iMessage."
+echo "---"
+cat /tmp/beeper-onboard.txt
+```
+
+Then tell the user:
+1. The message is on their clipboard, ready to paste into the recipient's iMessage thread.
+2. After the person installs Beeper and gets a `BEEPER_USER` id, the user should add them to their allowlist via the host admin (`/admin` on the API host) before any first beep can land.
+3. The template lives at `$PLUGIN_DIR/templates/onboarding.md` — they can edit it any time and the change applies to all future onboards.
 
 ## SMS-back (reply without opening Claude)
 
