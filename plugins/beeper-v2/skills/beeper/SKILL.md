@@ -23,7 +23,7 @@ export BEEPER_API_URL=https://beeper-v2-host.vercel.app
 ## When to invoke
 
 - **Send** — the user says "ask Edward's Claude about X", "send this to Kaan", "beep <name>". → run the send block.
-- **Check** — user types `/beeper-v2` or asks "what beeps do I have?". → run the check block.
+- **Check** — user types `/beeper-v2` or asks "what beeps do I have?". → run the check block. **Check covers BOTH inbox AND replies to beeps the user sent.** A bare `/beeper-v2` invocation that only reports the inbox is a bug — replies waiting on the user are silently dropped.
 - **Reply / decline** — user reviews a queued beep and chooses an action. → run the reply or decline block.
 - **Onboard** — user says "onboard <name>", "draft an onboarding message for <name>", or types `/beeper-v2 onboard <name>`. → run the onboard block. This is for people not yet on Beeper — it formats the canned welcome message and copies it to clipboard so the user can paste it into iMessage.
 
@@ -116,6 +116,50 @@ curl -fLsS "$BEEPER_API_URL/api/beeps/$ID/attachments/<attachment_id>?as=$BEEPER
 
 ### Check
 
+Check has TWO halves. Run BOTH every invocation — do not stop after the inbox.
+
+**Half 1: replies to beeps the user sent (surface FIRST — time-sensitive).**
+
+```bash
+mkdir -p ~/.beeper
+SEEN_FILE="$HOME/.beeper/seen-replies.log"
+touch "$SEEN_FILE"
+SEEN_IDS="$(jq -r '.beep_id' "$SEEN_FILE" 2>/dev/null | sort -u)"
+
+curl -fsS "$BEEPER_API_URL/api/beeps?from=$BEEPER_USER" \
+  | jq -r --arg seen "$SEEN_IDS" '
+      ($seen | split("\n") | map(select(length>0))) as $seen_arr
+      | .beeps[]
+      | select(.status == "closed" or .status == "declined" or .status == "acknowledged")
+      | select((.reply // .decline_reason // (if .status=="acknowledged" then "(acknowledged silently — no message)" else null end)) != null)
+      | select(.id as $id | ($seen_arr | index($id)) | not)
+      | "\(.id)  to=\(.to)  status=\(.status)  \(.closed_at // .created_at)\n  task:  \(.task // .title // "(no body)")\n  reply: \(.reply // .decline_reason // "(acknowledged silently — no message)")\n"
+    '
+```
+
+For each surfaced reply:
+- Read out the **sender's reply text** in full. Don't paraphrase — replies are often substantive (PR reviews, architectural suggestions, follow-up asks).
+- Connect it back to what the user asked: include the original beep `task` so the user remembers context.
+- After surfacing, mark them seen so the next check is idempotent:
+
+```bash
+# Build the list of IDs we just surfaced (call this AFTER showing them to the user)
+JUST_SHOWN_IDS=$(curl -fsS "$BEEPER_API_URL/api/beeps?from=$BEEPER_USER" \
+  | jq -r --arg seen "$SEEN_IDS" '
+      ($seen | split("\n") | map(select(length>0))) as $seen_arr
+      | .beeps[]
+      | select(.status == "closed" or .status == "declined" or .status == "acknowledged")
+      | select(.id as $id | ($seen_arr | index($id)) | not)
+      | .id
+    ')
+TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+for ID in $JUST_SHOWN_IDS; do
+  jq -nc --arg ts "$TS" --arg beep_id "$ID" '{ts:$ts,beep_id:$beep_id}' >> "$SEEN_FILE"
+done
+```
+
+**Half 2: incoming open beeps (the user's inbox).**
+
 ```bash
 curl -fsS "$BEEPER_API_URL/api/beeps?to=$BEEPER_USER&status=open" \
   | jq -r '.beeps[] | "\(.id)  from=\(.from)  urgency=\(.urgency)  \(.created_at)\n  title: \(.title // "(none)")\n  task:  \(.task)\n  acceptance: \(.acceptance // "(none)")\n  metadata: \(.metadata)\n  cwd=\(.cwd // "(none)")\n  transcript_requested=\(.request_transcript)\n"'
@@ -123,12 +167,14 @@ curl -fsS "$BEEPER_API_URL/api/beeps?to=$BEEPER_USER&status=open" \
 
 `status` filter accepts `open`, `closed`, `declined`, or `acknowledged` (omit it to get all). A beep ends up `acknowledged` when its recipient silently closed it via an SMS `ACK` (see SMS-back below) — it's a terminal state like `closed`/`declined`, but signals "seen, no substantive reply."
 
-For each beep:
+For each inbox beep:
 - Read out the **title** (if present), then body, then acceptance criteria.
 - Note any metadata fields that matter (deadline, pr_number, etc.).
 - If `request_transcript=true`, flag that the sender will see your Claude trace on reply.
 - Check for attachments — `GET /api/beeps/$ID/attachments?as=$BEEPER_USER` — and offer to download them if any are present.
 - Ask the user: **execute**, **reply with note**, **acknowledge** (silent close, no SMS to sender — for "got it"/"on it" receipts), or **decline**.
+
+If BOTH halves return nothing, then (and only then) report "no open beeps and no new replies."
 
 ### Reply
 

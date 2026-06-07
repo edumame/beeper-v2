@@ -5,7 +5,7 @@ description: Check the beeper queue, send a beep, draft an onboarding message, o
 Invoke the `beeper` skill (located at `skills/beeper/SKILL.md` in this plugin). The user's args are: `$ARGUMENTS`.
 
 Routing:
-- No args → check the queue.
+- No args → check the queue. **Check covers BOTH the inbox (beeps to the user) AND new replies/declines/acks on beeps the user sent.** Surfacing only one half is a bug — see the skill's Check workflow, which has two halves and must run both.
 - `send <to> "<task>" [--urgency high] [--request-transcript]` → send a beep.
 - `reply <id> "<text>" [--no-transcript]` → reply to a queued beep.
 - `decline <id> "<reason>"` → decline.
